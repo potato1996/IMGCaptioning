@@ -14,6 +14,6 @@ def get_loader(data_loc):
     return vocab
 
 # TEST
-vocab = get_loader("vocab.txt")
-print(len(vocab.word2idx.keys()))
-# ['<pad>', '<start>', '<end>', '<unk>', 'a', 'very', 'clean', 'and', 'well', 'decorated']
+# vocab = get_loader("vocab.txt")
+# print(len(vocab.word2idx.keys()))
+# 9957
