@@ -35,7 +35,7 @@ class Vocabulary(object):
 	
 def build_vocab(json, threshold=5):
 	"""Build a simple vocabulary wrapper."""
-    coco = COCO(json)
+	coco = COCO(json)
     counter = Counter()
     ids = coco.anns.keys()
     for id in ids:
@@ -69,9 +69,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+	parser = argparse.ArgumentParser()
 	# Coco annotation dataset address
-    parser.add_argument('--caption_path', type=str, 
+	parser.add_argument('--caption_path', type=str, 
                         default='data/annotations/captions_train2014.json', 
                         help='path for train annotation file')
 	# Address to store the mapping
