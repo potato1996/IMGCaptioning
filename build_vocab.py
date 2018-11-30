@@ -1,7 +1,7 @@
 import nltk
 from collections import Counter
 from pycocotools.coco import COCO
-
+import argparse
 
 class Vocabulary(object):
     """Simple vocabulary wrapper."""
@@ -66,7 +66,7 @@ def main(args):
     with open(vocab_path, 'w') as f:
         # example: for mapping {"a":1, "b":2} create and write "a b" into vocab.path
         f.write(" ".join(list(vocab.word2idx.keys())))
-    print("Total vocabulary size: {}".format(len(vocab)))
+    print("Total vocabulary size: {}".format(vocab.size()))
     print("Saved the vocabulary wrapper to '{}'".format(vocab_path))
 
 
