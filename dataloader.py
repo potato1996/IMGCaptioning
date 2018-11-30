@@ -7,13 +7,13 @@ def get_loader(data_loc):
     :return: Vocabulary class variable vocab
     """
     with open(data_loc, 'r') as f:
-        words = f.read().split()
+        words = f.read().split("\n")
     vocab = Vocabulary()
     for word in words:
         vocab.add_word(word)
     return vocab
 
 # TEST
-# vocab = get_loader("vocab.txt")
-# print(list(vocab.word2idx.keys())[:10])
+vocab = get_loader("vocab.txt")
+print(len(vocab.word2idx.keys()))
 # ['<pad>', '<start>', '<end>', '<unk>', 'a', 'very', 'clean', 'and', 'well', 'decorated']

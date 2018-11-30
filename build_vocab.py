@@ -17,20 +17,22 @@ class Vocabulary(object):
             self.idx2word[self.idx] = word
             self.idx += 1
 
-    # as you mentioned
+    # as you mentioned if you prefer calling size method
     def size(self):
         return len(self.word2idx)
 
+    # call len(vocab) is also fine
+    def __len__(self):
+        return len(self.word2idx)
+
     def word2vec(self, word):
-        if not word in self.word2idx:
+        if word not in self.word2idx:
             return self.word2idx['<unk>']
         return self.word2idx[word]
 
-    # 'unk' or 'pad' this is a question
     def vec2word(self, vec):
-        if not vec in self.idx2word:
+        if vec not in self.idx2word:
             return '<unk>'
-            # return 'pad'
         return self.idx2word[vec]
 
 
@@ -65,7 +67,7 @@ def main(args):
     vocab_path = args.vocab_path
     with open(vocab_path, 'w') as f:
         # example: for mapping {"a":1, "b":2} create and write "a b" into vocab.path
-        f.write(" ".join(list(vocab.word2idx.keys())))
+        f.write("\n".join(list(vocab.word2idx.keys())))
     print("Total vocabulary size: {}".format(vocab.size()))
     print("Saved the vocabulary wrapper to '{}'".format(vocab_path))
 
