@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
-from torch.nn.utils.rnn import pack_padded_sequence
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.autograd import Variable
 
 class Decoder(nn.Module):
@@ -66,11 +66,23 @@ class Decoder(nn.Module):
         img_embedding   = self.img_embedding(features)        # (batch, input_size)
         
         embeddings = torch.cat((img_embedding.unsqueeze(1), input_embedding), 1) # (batch, max_len + 1, input_size)
+        
+        # We need to sort the inputs before pack them
+        input_caption_lengths, perm_index = input_caption_lengths.sort(0, decending=True)
+        embeddings = embeddings[perm_index]
+
         packed     = pack_padded_sequence(embeddings, input_caption_lengths, batch_first=True)
         
         hiddens    = self.init_hidden(batch_size)
         outputs, _ = self.lstm(packed, hiddens)
+        outputs, _ = pad_packed_sequence(outputs, batch_first=True)
+
+        # Order them back..
+        _, unperm_index = perm_index.sort(0)
+        outputs    = outputs[unperm_index]  
+
         outputs    = self.output_fc(outputs[0])
+
         return outputs
 
     def sample(self, features, lengths, hiddens=None):
@@ -78,7 +90,7 @@ class Decoder(nn.Module):
         sampled_ids     = []
         img_embedding   = self.img_embedding(features)        # (1, input_size)
         inputs          = img_embedding.unsqueeze(1)          # (1, 1, input_size)
-        for i in range(self.max_dec_len):
+        for _ in range(self.max_dec_len):
             """ produce the prediction of current symbol """
             outputs, hiddens = self.lstm(inputs, hiddens)
             outputs          = self.output_fc(outputs)
