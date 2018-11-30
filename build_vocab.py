@@ -51,8 +51,8 @@ def build_vocab(json, threshold=5):
 
     # Create a vocab wrapper and add some special tokens.
     vocab = Vocabulary()
-    vocab.add_word('<pad>')
     vocab.add_word('<start>')
+    vocab.add_word('<pad>')
     vocab.add_word('<end>')
     vocab.add_word('<unk>')
 
