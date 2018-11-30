@@ -41,15 +41,37 @@ class Encoder(nn.Module):
             self.model = models.inception_v3(init)
         assert self.model is not None, "Error, unknown CNN model structure"
         
-        """ Replace the last FC layer """
-        modules     = list(self._model.children())[:-1]
-        self.model  = nn.Sequential(*modules)
-        self.fc     = nn.Linear(self._model.fc.in_features, feature_size)
-        self.bn     = nn.BatchNorm1d(feature_size, momentum=0.01)
+        """ Replace the last FC layer/classifier """
+        if base_model.startswith("resnet"):
+            self.fc     = nn.Linear(self.model.fc.in_features, feature_size)
+            modules     = list(self.model.children())[:-1]
+            self.model  = nn.Sequential(*modules)
+            self.bn     = nn.BatchNorm1d(feature_size, momentum=0.01)
+        
+        if base_model.startswith("vgg"):
+            self.fc     = nn.Linear(self.model.classifier[0].in_features, feature_size)
+            modules     = list(self.model.children())[:-1]
+            self.model  = nn.Sequential(*modules)
+            self.bn     = nn.BatchNorm1d(feature_size, momentum=0.01)
 
+        if base_model.startswith("inception"):
+            self.fc     = nn.Linear(self.model.fc.in_features, feature_size)
+            modules     = list(self.model.children())[:-1]
+            self.model  = nn.Sequential(*modules)
+            self.bn     = nn.BatchNorm1d(feature_size, momentum=0.01)
+        
+        """ Freeze the CNN part in the 1st Phase """
+        self.fine_tune(train)
+
+        """ Initialize the weights in the FC layer """
+        if init:
+            self.fc.weight.data.normal_(0.0, 0.02)
+            self.fc.bias.data.fill_(0)
+
+    def fine_tune(self, allow_fine_tune=True):
         """ Freeze the CNN part in the 1st Phase """
         for param in self.model.parameters():
-            param.requires_grad = train
+            param.requires_grad = allow_fine_tune
 
     def forward(self, images):
         """ 
