@@ -34,7 +34,7 @@ class Vocabulary(object):
 		
 	
 def build_vocab(json, threshold=5):
-    """Build a simple vocabulary wrapper."""
+	"""Build a simple vocabulary wrapper."""
     coco = COCO(json)
     counter = Counter()
     ids = coco.anns.keys()
