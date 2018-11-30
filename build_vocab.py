@@ -55,7 +55,7 @@ def build_vocab(json, threshold=5):
     vocab.add_word('<unk>')
 
     # Add the words to the vocabulary.
-    for i, word in enumerate(words):
+    for word in words:
         vocab.add_word(word)
     return vocab
 
