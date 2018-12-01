@@ -66,7 +66,7 @@ class Decoder(nn.Module):
         # 1. Embed input caption(indices) into features
         input_embedding = self.input_embedding(input_caption)  # (batch, max_len, input_size)
 
-        # 2. Combine the 
+        # 2. put image features as the first input
         embeddings = torch.cat((img_embedding.unsqueeze(1), input_embedding), 1)  # (batch, max_len + 1, input_size)
 
         # (3). Wo don't need to sort them here. We have already sorted them in out data loader 

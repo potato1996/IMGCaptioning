@@ -29,7 +29,7 @@ class CocoCaptionsTrain(data.Dataset):
             index (int): Index
 
         Returns:
-            tuple: Tuple (image, target). target is a list of captions for the image.
+            tuple: Tuple (image, target). target is a list of indices for the image.
         """
         coco = self.coco
         img_id = self.ids[index]
@@ -57,7 +57,15 @@ class CocoCaptionsTrain(data.Dataset):
         return len(self.ids)
 
 def train_collate_fn(data):
-    """ Costomized mini-batch creation function """
+    """ Costomized mini-batch creation function 
+    
+    Args:
+        data: Tuple(image, target) - the result from CocoCaptionsTrain
+
+    Returns:
+        tuple: Tuple (images, targets, lengths) - batch of images, batch of targets (with padding) and batch of valid lengths for these targets.
+
+    """
     batch_size = len(data)
     data.sort(key=lambda x: len(x[1]), reverse=True)
     images, captions = zip(*data)
@@ -76,11 +84,10 @@ def train_collate_fn(data):
     
     return images, targets, lengths
     
-    
-
 def get_train_loader(vocab, root, annFile, transform, batch_size, shuffle=True, num_workers=1):
     train_set = CocoCaptionsTrain(vocab, root, annFile, transform)
     train_set_loader = torch.utils.data.DataLoader(dataset = train_set, batch_size = batch_size, shuffle=shuffle, num_workers=num_workers, collate_fn=train_collate_fn)
+    return train_set_loader
 
 def get_val_loader(root, annFile, transform, shuffle=False, num_workers=1):
     val_set = datasets.CocoCaptions(root, annFile, transform=transform, target_transform=None)
