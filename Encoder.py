@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 
+
 class Encoder(nn.Module):
     """ Encoder part -- A CNN Encoder to produce the features of given image """
+
     def __init__(self, base_model="inception", embed_size=512, init=True, train_cnn=False):
         """
         Args:
@@ -26,42 +28,42 @@ class Encoder(nn.Module):
 
         """ Load the pretrianed model """
         self.model = None
-        if base_model == "vgg16" :
+        if base_model == "vgg16":
             self.model = models.vgg16_bn(init)
-        if base_model == "vgg19" :
+        if base_model == "vgg19":
             self.model = models.vgg19_bn(init)
-        if base_model == "resnet50" :
+        if base_model == "resnet50":
             self.model = models.resnet50(init)
-        if base_model == "resnet101" :
+        if base_model == "resnet101":
             self.model = models.resnet101(init)
-        if base_model == "resnet152" :
+        if base_model == "resnet152":
             self.model = models.resnet152(init)
         if base_model == "inception":
             self.model = models.inception_v3(init)
         assert self.model is not None, "Error, unknown CNN model structure"
-        
+
         """ Replace the last FC layer/classifier """
         if base_model.startswith("resnet"):
-            self.fc     = nn.Linear(self.model.fc.in_features, embed_size)
-            modules     = list(self.model.children())[:-1]
-            self.model  = nn.Sequential(*modules)
-            self.pool   = nn.AvgPool2d(kernel_size=7, stride=1)
-            self.bn     = nn.BatchNorm1d(embed_size, momentum=0.01)
-        
+            self.fc = nn.Linear(self.model.fc.in_features, embed_size)
+            modules = list(self.model.children())[:-1]
+            self.model = nn.Sequential(*modules)
+            self.pool = nn.AvgPool2d(kernel_size=7, stride=1)
+            self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
+
         if base_model.startswith("vgg"):
-            self.fc     = nn.Linear(self.model.classifier[0].in_features, embed_size)
-            modules     = list(self.model.children())[:-1]
-            self.model  = nn.Sequential(*modules)
-            self.pool   = nn.AvgPool2d(kernel_size=7, stride=1)
-            self.bn     = nn.BatchNorm1d(embed_size, momentum=0.01)
+            self.fc = nn.Linear(self.model.classifier[0].in_features, embed_size)
+            modules = list(self.model.children())[:-1]
+            self.model = nn.Sequential(*modules)
+            self.pool = nn.AvgPool2d(kernel_size=7, stride=1)
+            self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
         if base_model.startswith("inception"):
-            self.fc     = nn.Linear(self.model.fc.in_features, embed_size)
-            modules     = list(self.model.children())[:-1]
-            self.model  = nn.Sequential(*modules)
-            self.pool   = nn.AvgPool2d(kernel_size=8, stride=1)
-            self.bn     = nn.BatchNorm1d(embed_size, momentum=0.01)
-        
+            self.fc = nn.Linear(self.model.fc.in_features, embed_size)
+            modules = list(self.model.children())[:-1]
+            self.model = nn.Sequential(*modules)
+            self.pool = nn.AvgPool2d(kernel_size=8, stride=1)
+            self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
+
         """ Freeze the CNN part in the 1st Phase """
         self.fine_tune(train_cnn)
 
@@ -85,7 +87,7 @@ class Encoder(nn.Module):
         Returns:
             features: (Tensor) The extracted features from the Encoder part, the size should be (batch_size, embed_size)
         """
-        
+
         features = self.model(images)
         features = self.pool(features)
         features = features.reshape(features.size(0), -1)
