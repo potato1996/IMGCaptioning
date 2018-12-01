@@ -1,19 +1,5 @@
-from build_vocab import Vocabulary
+def get_train_loader(root, json, transform, batch_size, shuffle, num_workers):
+    return None
 
-
-def get_loader(data_loc):
-    """
-    :param data_loc: the address of corpus
-    :return: Vocabulary class variable vocab
-    """
-    with open(data_loc, 'r') as f:
-        words = f.read().split("\n")
-    vocab = Vocabulary()
-    for word in words:
-        vocab.add_word(word)
-    return vocab
-
-# TEST
-# vocab = get_loader("vocab.txt")
-# print(len(vocab.word2idx.keys()))
-# 9957
+def get_val_loader(root, json, transform, shuffle, num_workers):
+    return None
