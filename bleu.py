@@ -35,7 +35,7 @@ def evaluate(refs, res):
     print('Bleu_4:\t', final_scores['Bleu_4'])
 
     return final_scores
-#
+
 # reference = {1: ["this is small test and and and and and and"]}
 # candidate = {1: ['this is a test and and and and']}
 # score = evaluate(reference, candidate)
