@@ -93,8 +93,19 @@ class Decoder(nn.Module):
 
         return outputs
 
-    def sample(self, img_embedding):
+    def sample(self, img_embedding, beam_width = 1):
+        """ 
+        Inference code for Decoder
+            - due to the nature of LSTM, we need to use a complete different buch of code
+        """
+        # During inference we only allows batch_size = 1
+        assert img_embedding.size(0) == 1, "ERROR: only allows batch_size=1 at inference time"
+        
+        if beam_width > 1:
+            return self.sample_beam(img_embedding, beam_width)
+
         """ The codes below uses greedy search """
+
         hiddens = None
         prediction_ids = []
         inputs = img_embedding.unsqueeze(1)  # (1, 1, input_size)
@@ -105,23 +116,37 @@ class Decoder(nn.Module):
             else:
                 if i == 1:
                     # Assuming that 1 is the index of <start>
-                    inputs = torch.tensor([1], dtype=torch.long)
-                    inputs = inputs.unsqueeze(1)  # (1, 1)
+                    inputs = torch.ones((1, 1), dtype=torch.long, requires_grad=False).cuda()
                     inputs = self.input_embedding(inputs)  # (1, 1, input_size)
 
                 outputs, hiddens = self.lstm(inputs, hiddens)  # (1, 1, hidden_size)
 
-                outputs = self.output_fc(outputs.sequeeze(1))  # (1, vocab_size)
-                _, predicted = outputs.max(1)  # (1, 1)
+                outputs = self.output_fc(outputs.view(-1))  # (vocab_size)
+                _, predicted = outputs.max(0)  # (1)
                 prediction_ids.append(predicted)
 
                 """ feed current symbol as the input of the next symbol """
-                inputs = self.input_embedding(predicted)  # (1, input_size)
-                inputs = inputs.unsqueeze(1)  # (1, 1, input_size)
+                inputs = self.input_embedding(predicted.view(1, 1))  # (1, 1, input_size)
+                #inputs = inputs.unsqueeze(1)  # (1, 1, input_size)
 
-        prediction_ids = torch.stack(prediction_ids, 1)  # (1, max_dec_len)
+        prediction_ids = torch.stack(prediction_ids, 0)  # (max_dec_len)
 
         return prediction_ids
+    
+    def sample_beam(self, img_embedding, beam_width):
+        seq = torch.LongTensor(self.max_dec_len).zero_()
+        seqLogprobs = torch.FloatTensor(self.max_dec_len)
+
+        # 1. the first input should be image
+        inputs = img_embedding.expand(beam_width, self.input_size).unsequeeze(1) # (beam_width, 1, input_size)
+
+        # 2. run the first input through the lstm
+        outputs, hiddens = self.lstm(inputs)
+
+        pass
+
+           
+
 
 
 class BeamSearchDecoder(Decoder):
