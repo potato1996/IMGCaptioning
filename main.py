@@ -1,12 +1,14 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from vocabloader import vocab_loader
-from torchvision import transforms
-from dataloader import *
 from torch.nn.utils.rnn import pack_padded_sequence
-from Encoder import Encoder
+from torchvision import transforms
+
 from Decoder import Decoder
+from Encoder import Encoder
+from bleu import evaluate
+from dataloader import *
+from vocabloader import vocab_loader
 
 # hyper-parameters
 batch_size = 64
@@ -44,61 +46,63 @@ transform = transforms.Compose([
 encoder = Encoder(embed_size=embedding_size).to(device)
 decoder = Decoder(vocal_size).to(device)
 
+# load model from a check point
+if check_point:
+    encoder.load_state_dict(torch.load(encoder_model_path))
+    decoder.load_state_dict(torch.load(decoder_model_path))
+
 # Load all vocabulary in the data set
 vocab = vocab_loader("vocab.txt")
 
+# Load training data
+train_loader = get_train_loader(train_image_file, train_captions_json, transform, batch_size, True)
 
-def train():
-    # Load training data
-    train_loader = get_train_loader(train_image_file, train_captions_json, transform, batch_size, True)
+# Loss and optimizer
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(
+    filter(lambda p: p.requires_grad, list(encoder.parameters()) + list(decoder.parameter())), lr=learning_rate)
 
-    # load model from a check point
-    if check_point:
-        encoder.load_state_dict(torch.load(encoder_model_path))
-        decoder.load_state_dict(torch.load(decoder_model_path))
 
-    # Loss and optimizer
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, list(encoder.parameters()) + list(decoder.parameter())), lr=learning_rate)
-
+def train(epoch):
     # Train the models
     total_step = len(train_loader)
-    for epoch in range(num_epochs):
-        for i, (image, captions, lengths) in enumerate(train_loader):
-            # Set mini-batch dataset
-            images = images.to(device)
-            captions = captions.to(device)
+    for i, (image, captions, lengths) in enumerate(train_loader):
+        # Set mini-batch dataset
+        images = images.to(device)
+        captions = captions.to(device)
 
-            # Exclude the "<start>" from loss function
-            captions = captions[:, 1:]
-            lengths_1 = lengths - 1
+        # Exclude the "<start>" from loss function
+        captions = captions[:, 1:]
+        lengths_1 = lengths - 1
 
-            targets = pack_padded_sequence(captions, lengths_1, batch_fisrt=True).data
+        targets = pack_padded_sequence(captions, lengths_1, batch_fisrt=True).data
 
-            # Forward, backward and optimize
-            features = encoder(images)
-            outputs = decoder(features, captions, lengths)
-            outputs = outputs[:, 1:, :]
-            loss = criterion(outputs, targets)
-            decoder.zero_grad()
-            decoder.zero_grad()
-            loss.backward()
-            optimizer.step()
+        # Forward, backward and optimize
+        features = encoder(images)
+        outputs = decoder(features, captions, lengths)
+        outputs = outputs[:, 1:, :]
+        loss = criterion(outputs, targets)
+        encoder.zero_grad()
+        decoder.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-            # Print log info
-            if i % log_step == 0:
-                print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Perplexity: {:5.4f}'
-                      .format(epoch, num_epochs, i, total_step, loss.item(), np.exp(loss.item())))
+        # Print log info
+        if i % log_step == 0:
+            print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Perplexity: {:5.4f}'
+                  .format(epoch, num_epochs, i, total_step, loss.item(), np.exp(loss.item())))
 
-        # Save the model checkpoints
-        torch.save(decoder.state_dict(), os.path.join(
-            saving_model_path, 'decoder-{}.ckpt'.format(epoch + 1)))
-        torch.save(encoder.state_dict(), os.path.join(
-            saving_model_path, 'encoder-{}.ckpt'.format(epoch + 1)))
+    # Save the model checkpoints
+    torch.save(decoder.state_dict(), os.path.join(
+        saving_model_path, 'decoder-{}.ckpt'.format(epoch + 1)))
+    torch.save(encoder.state_dict(), os.path.join(
+        saving_model_path, 'encoder-{}.ckpt'.format(epoch + 1)))
 
 
 def validation():
+    output_captions = dict()  # Map(ID -> List(sentences))
+    ref_captions = dict()  # Map(ID -> List(sentences))
+
     # Load validation data
     val_loader = get_val_loader(val_image_file, val_captions_json, transform)
 
@@ -106,11 +110,30 @@ def validation():
     encoder.load_state_dict(torch.load(encoder_model_path))
     decoder.load_state_dict(torch.load(decoder_model_path))
 
-    #
+    # Iterate over validation data set
+    with torch.no_grad():
+        for i, (image, captions, lengths) in enumerate(val_loader):
+            # image = image.to(device)??
+            # captions = cations.to(device)??
+            feature = encoder(image)
+            # where is the soft-max?
+            output_caption = decoder.sample(feature)
+            # exclude <pad> <start> <end>?
+            output_captions[i] = [vocab.vec2word(output_caption)]
+
+            ref_captions[i] = []
+            for caption in captions:
+                caption = vocab.vec2word(caption)
+                ref_captions.append(caption)
+
+    bleu_score = evaluate(ref_captions, output_captions)
+    print(bleu_score)
 
 
 def main():
-    pass
+    for epoch in num_epochs:
+        train(epoch)
+        validation()
 
 
 if __name__ == "__main__":
