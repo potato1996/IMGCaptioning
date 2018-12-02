@@ -1,5 +1,5 @@
-<start>
 <pad>
+<start>
 <end>
 <unk>
 a
