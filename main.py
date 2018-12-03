@@ -64,6 +64,8 @@ optimizer = torch.optim.Adam(
 
 
 def train(epoch):
+    encoder.train(True)
+    decoder.train(True)
     # Train the models
     total_step = len(train_loader)
     for i, (image, captions, lengths) in enumerate(train_loader):
@@ -100,13 +102,15 @@ def train(epoch):
 
 
 def validation():
+    encoder.eval()
+    decoder.eval()
     output_captions = dict()  # Map(ID -> List(sentences))
     ref_captions = dict()  # Map(ID -> List(sentences))
 
     # Load validation data
     val_loader = get_val_loader(val_image_file, val_captions_json, transform)
 
-    # Load the trained model
+    # Load the trained model (XXXX)
     encoder.load_state_dict(torch.load(encoder_model_path))
     decoder.load_state_dict(torch.load(decoder_model_path))
 
@@ -118,13 +122,25 @@ def validation():
             feature = encoder(image)
             # where is the soft-max?
             output_caption = decoder.sample(feature)
-            # exclude <pad> <start> <end>?
-            output_captions[i] = [vocab.vec2word(output_caption)]
+
+            # exclude <pad> <start> <end>
+            output_without_nonstring = []
+            for idx in output_caption:
+                if idx == 2:
+                    break
+                elif idx <= 3:
+                    continue
+                else:
+                    output_without_nonstring.append(vocab.vec2word(idx))
+            output_captions[i] = " ".join(output_without_nonstring)
 
             ref_captions[i] = []
             for caption in captions:
-                caption = vocab.vec2word(caption)
-                ref_captions.append(caption)
+                caption = []
+                for idx_of_word in caption.split():
+                    caption.append(vocab.vec2word(idx_of_word))
+                caption = " ".join(caption)
+                ref_captions[i].append(caption)
 
     bleu_score = evaluate(ref_captions, output_captions)
     print(bleu_score)
