@@ -112,14 +112,12 @@ class Decoder(nn.Module):
                 outputs, hiddens = self.lstm(inputs, hiddens)  # (1, 1, hidden_size)
 
                 outputs = self.output_fc(outputs.sequeeze(1))  # (1, vocab_size)
-                _, predicted = outputs.max(1)  # (1, 1)
-                prediction_ids.append(predicted)
+                _, predicted = outputs.max(1)  # (1)
+                prediction_ids.append(predicted.cpu()[0])
 
                 """ feed current symbol as the input of the next symbol """
                 inputs = self.input_embedding(predicted)  # (1, input_size)
                 inputs = inputs.unsqueeze(1)  # (1, 1, input_size)
-
-        prediction_ids = torch.stack(prediction_ids, 1)  # (1, max_dec_len)
 
         return prediction_ids
 
