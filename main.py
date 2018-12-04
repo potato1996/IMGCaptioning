@@ -15,7 +15,7 @@ batch_size = 64
 embedding_size = 512
 vocal_size = 9957
 learning_rate = 0.001
-num_epochs = 50
+num_epochs = 200
 # argument
 log_step = 100
 
@@ -24,8 +24,8 @@ saving_model_path = "/scratch/dd2645/cv-project/models"
 encoder_model_path = saving_model_path + "/encoder-1.ckpt"
 decoder_model_path = saving_model_path+ "/decoder-1.ckpt"
 
-train_image_file = "/scratch/dd2645/mscoco/train2014"
-train_captions_json = "/scratch/dd2645/mscoco/annotations/captions_train2014.json"
+train_image_file = "/scratch/dd2645/mscoco/train2017"
+train_captions_json = "/scratch/dd2645/mscoco/annotations/captions_train2017.json"
 val_image_file = "/scratch/dd2645/mscoco/val2017"
 val_captions_json = "/scratch/dd2645/mscoco/annotations/captions_val2017.json"
 
