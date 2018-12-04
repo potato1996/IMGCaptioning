@@ -1,3 +1,4 @@
+import torch
 import torch.utils.data as data
 from PIL import Image
 from torchvision import datasets, transforms
@@ -49,7 +50,7 @@ class CocoCaptionsTrain(data.Dataset):
 
         # Convert caption to word ids
         target = target[0]
-        tokens = nltk.tokenize.word_tokenize(str(target).lower)
+        tokens = nltk.tokenize.word_tokenize(str(target).lower())
         target = []
         target.append(self.vocab.word2vec("<start>"))
         target.extend([self.vocab.word2vec(token) for token in tokens])
@@ -90,14 +91,14 @@ def train_collate_fn(data):
     return images, targets, lengths
 
 
-def get_train_loader(vocab, root, annFile, transform, batch_size, shuffle=True, num_workers=1):
+def get_train_loader(vocab, root, annFile, transform, batch_size, shuffle=True, num_workers=8):
     train_set = CocoCaptionsTrain(vocab, root, annFile, transform)
     train_set_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=batch_size, shuffle=shuffle,
                                                    num_workers=num_workers, collate_fn=train_collate_fn)
     return train_set_loader
 
 
-def get_val_loader(root, annFile, transform, shuffle=False, num_workers=1):
+def get_val_loader(root, annFile, transform, shuffle=False, num_workers=8):
     val_set = datasets.CocoCaptions(root, annFile, transform=transform, target_transform=None)
-    val_set_loader = torch.utils.data.DataLoader(val_set, batch_Size=1, shuffle=shuffle, num_workers=num_workers)
+    val_set_loader = torch.utils.data.DataLoader(val_set, batch_size=1, shuffle=shuffle, num_workers=num_workers)
     return val_set_loader

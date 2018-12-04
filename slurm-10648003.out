@@ -1,0 +1,21 @@
+loading annotations into memory...
+Done (t=0.75s)
+creating index...
+index created!
+Epoch [0/50], Step [0/1294], Loss: 9.1942, Perplexity: 9839.8875
+Epoch [0/50], Step [100/1294], Loss: 0.6241, Perplexity: 1.8666
+Epoch [0/50], Step [200/1294], Loss: 0.1998, Perplexity: 1.2211
+Epoch [0/50], Step [300/1294], Loss: 0.1769, Perplexity: 1.1935
+Epoch [0/50], Step [400/1294], Loss: 0.1101, Perplexity: 1.1164
+Epoch [0/50], Step [500/1294], Loss: 0.1325, Perplexity: 1.1417
+Epoch [0/50], Step [600/1294], Loss: 0.1208, Perplexity: 1.1284
+Epoch [0/50], Step [700/1294], Loss: 0.0296, Perplexity: 1.0301
+Epoch [0/50], Step [800/1294], Loss: 0.1049, Perplexity: 1.1106
+Epoch [0/50], Step [900/1294], Loss: 0.0402, Perplexity: 1.0410
+Epoch [0/50], Step [1000/1294], Loss: 0.0246, Perplexity: 1.0249
+Epoch [0/50], Step [1100/1294], Loss: 0.0625, Perplexity: 1.0645
+Epoch [0/50], Step [1200/1294], Loss: 0.0284, Perplexity: 1.0288
+loading annotations into memory...
+Done (t=0.14s)
+creating index...
+index created!

@@ -105,15 +105,15 @@ class Decoder(nn.Module):
             else:
                 if i == 1:
                     # Assuming that 1 is the index of <start>
-                    inputs = torch.tensor([1], dtype=torch.long)
+                    inputs = torch.tensor([1], dtype=torch.long).cuda()
                     inputs = inputs.unsqueeze(1)  # (1, 1)
                     inputs = self.input_embedding(inputs)  # (1, 1, input_size)
 
                 outputs, hiddens = self.lstm(inputs, hiddens)  # (1, 1, hidden_size)
 
-                outputs = self.output_fc(outputs.sequeeze(1))  # (1, vocab_size)
+                outputs = self.output_fc(outputs.squeeze(1))  # (1, vocab_size)
                 _, predicted = outputs.max(1)  # (1)
-                prediction_ids.append(predicted.cpu()[0])
+                prediction_ids.append(predicted.cpu().data.tolist()[0])
 
                 """ feed current symbol as the input of the next symbol """
                 inputs = self.input_embedding(predicted)  # (1, input_size)
