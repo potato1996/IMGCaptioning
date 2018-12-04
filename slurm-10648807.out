@@ -1,0 +1,53 @@
+loading annotations into memory...
+Done (t=1.17s)
+creating index...
+index created!
+Epoch [0/200], Step [0/1849], Loss: 9.2049, Perplexity: 9945.4763
+Epoch [0/200], Step [100/1849], Loss: 0.6738, Perplexity: 1.9616
+Epoch [0/200], Step [200/1849], Loss: 0.2812, Perplexity: 1.3247
+Epoch [0/200], Step [300/1849], Loss: 0.1613, Perplexity: 1.1750
+Epoch [0/200], Step [400/1849], Loss: 0.1124, Perplexity: 1.1189
+Epoch [0/200], Step [500/1849], Loss: 0.0858, Perplexity: 1.0895
+Epoch [0/200], Step [600/1849], Loss: 0.0567, Perplexity: 1.0583
+Epoch [0/200], Step [700/1849], Loss: 0.0731, Perplexity: 1.0759
+Epoch [0/200], Step [800/1849], Loss: 0.0355, Perplexity: 1.0361
+Epoch [0/200], Step [900/1849], Loss: 0.0473, Perplexity: 1.0484
+Epoch [0/200], Step [1000/1849], Loss: 0.0213, Perplexity: 1.0215
+Epoch [0/200], Step [1100/1849], Loss: 0.0138, Perplexity: 1.0139
+Epoch [0/200], Step [1200/1849], Loss: 0.0111, Perplexity: 1.0112
+Epoch [0/200], Step [1300/1849], Loss: 0.0395, Perplexity: 1.0402
+Epoch [0/200], Step [1400/1849], Loss: 0.0304, Perplexity: 1.0309
+Epoch [0/200], Step [1500/1849], Loss: 0.0007, Perplexity: 1.0007
+Epoch [0/200], Step [1600/1849], Loss: 0.0169, Perplexity: 1.0170
+Epoch [0/200], Step [1700/1849], Loss: 0.0088, Perplexity: 1.0089
+Epoch [0/200], Step [1800/1849], Loss: 0.0007, Perplexity: 1.0007
+loading annotations into memory...
+Done (t=0.27s)
+creating index...
+index created!
+Traceback (most recent call last):
+  File "/home/dd2645/IMGCaptioning/main.py", line 151, in <module>
+    main()
+  File "/home/dd2645/IMGCaptioning/main.py", line 147, in main
+    validation()
+  File "/home/dd2645/IMGCaptioning/main.py", line 140, in validation
+    bleu_score = evaluate(ref_captions, output_captions)
+  File "/home/dd2645/IMGCaptioning/bleu.py", line 29, in evaluate
+    final_scores = score(refs, res)
+  File "/home/dd2645/IMGCaptioning/bleu.py", line 14, in score
+    score, scores = scorer.compute_score(ref, hypo)
+  File "/home/dd2645/IMGCaptioning/pycocoevalcap/bleu.py", line 36, in compute_score
+    bleu_scorer += (hypo[0], ref)
+  File "/home/dd2645/IMGCaptioning/pycocoevalcap/bleu_scorer.py", line 172, in __iadd__
+    self.cook_append(other[0], other[1])
+  File "/home/dd2645/IMGCaptioning/pycocoevalcap/bleu_scorer.py", line 119, in cook_append
+    self.crefs.append(cook_refs(refs))
+  File "/home/dd2645/IMGCaptioning/pycocoevalcap/bleu_scorer.py", line 45, in cook_refs
+    rl, counts = precook(ref, n)
+  File "/home/dd2645/IMGCaptioning/pycocoevalcap/bleu_scorer.py", line 28, in precook
+    words = s.split()
+AttributeError: 'tuple' object has no attribute 'split'
+slurmstepd: error: Exceeded step memory limit at some point.
+slurmstepd: error: This may or may not result in some failure. The SLURM utilizes Linux cgroups for resource containment. For reference please read the explanation in the bug report: https://bugs.schedmd.com/show_bug.cgi?id=3214#c4
+slurmstepd: error: Exceeded job memory limit at some point.
+slurmstepd: error: This may or may not result in some failure. The SLURM utilizes Linux cgroups for resource containment. For reference please read the explanation in the bug report: https://bugs.schedmd.com/show_bug.cgi?id=3214#c4

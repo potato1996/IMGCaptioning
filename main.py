@@ -21,7 +21,6 @@ vocal_size = 9957
 log_step = 100
 
 saving_model_path = "/scratch/dd2645/cv-project/models"
-
 train_image_file = "/scratch/dd2645/mscoco/train2017"
 train_captions_json = "/scratch/dd2645/mscoco/annotations/captions_train2017.json"
 val_image_file = "/scratch/dd2645/mscoco/val2017"
@@ -31,22 +30,28 @@ val_captions_json = "/scratch/dd2645/mscoco/annotations/captions_val2017.json"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def train(epoch, num_epochs):
+def train(epoch, num_epochs, vocab, train_loader, encoder, decoder, optimizer, criterion):
+    
     encoder.train(True)
     decoder.train(True)
+    
     # Train the models
     total_step = len(train_loader)
     for i, (images, captions, lengths) in enumerate(train_loader):
-        # Set mini-batch dataset
+        
+        # Copy mini-batch data to GPU
         images = images.to(device)
         captions = captions.to(device)
-
         lengths = torch.tensor(lengths).to(device)
+        
         # Exclude the "<start>" from loss function
         captions = captions[:, 1:]
         lengths_1 = lengths - 1
 
         targets = pack_padded_sequence(captions, lengths_1, batch_first=True).data
+
+        encoder.zero_grad()
+        decoder.zero_grad()
 
         # Forward, backward and optimize
         features = encoder(images)
@@ -55,8 +60,6 @@ def train(epoch, num_epochs):
         outputs = pack_padded_sequence(outputs, lengths_1, batch_first=True).data
        
         loss = criterion(outputs, targets)
-        encoder.zero_grad()
-        decoder.zero_grad()
         loss.backward()
         optimizer.step()
 
@@ -72,14 +75,11 @@ def train(epoch, num_epochs):
         saving_model_path, 'encoder-{}.ckpt'.format(epoch + 1)))
 
 
-def validation():
+def validation(vocab, val_loader, encoder, decoder):
     encoder.eval()
     decoder.eval()
     output_captions = dict()  # Map(ID -> List(sentences))
     ref_captions = dict()  # Map(ID -> List(sentences))
-
-    # Load validation data
-    val_loader = get_val_loader(val_image_file, val_captions_json, transform)
 
     # Iterate over validation data set
     with torch.no_grad():
@@ -101,50 +101,23 @@ def validation():
                     output_without_nonstring.append(vocab.vec2word(idx))
             output_captions[i] = [" ".join(output_without_nonstring)]
             ref_captions[i] = captions
-            #for caption in captions:
-            #    caption_tmp = []
-            #    for idx_of_word in caption.split():
-            #        caption.append(vocab.vec2word(idx_of_word))
-            #    caption = " ".join(caption)
-            #    ref_captions[i].append(caption)
 
     bleu_score = evaluate(ref_captions, output_captions)
     print(bleu_score)
 
 
 def main(args):
-    for epoch in range(args.num_epochs):
-        train(epoch, args.num_epochs)
-        validation()
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--cnn_model', type=str,
-                        default='resnet152',
-                        help='model choices passed to Encoder, if it is inception resize to 299')
-    # Encoder model path
-    parser.add_argument('--encoder_model_path', type=str, default='',
-                        help='path for encoder model')
-    parser.add_argument('--decoder_model_path', type=str, default='',
-                        help='path for decoder model')
-    # Number of Epochs
-    parser.add_argument('--num_epochs', type=int, default=50,
-                        help='Number of Epochs')
-    # Learning rate
-    parser.add_argument('--learning_rate', type=float, default=0.001,
-                        help='Learning rate')
-    # Tune CNN or not
-    parser.add_argument('--train_cnn', type=bool, default=False,
-                        help='argument in Encoder')
-    args = parser.parse_args()
+    # Path to save the trained models
+    saving_model_path = args.saving_model_path
 
     # If path is not empty, set check_out = True
     check_point = True if args.encoder_model_path and args.decoder_model_path else False
-        
+    
+    # Load all vocabulary in the data set
+    vocab = vocab_loader("vocab.txt")   
 
     # Build the models
-    encoder = Encoder(base_mode=args.cnn_model, embed_size=embedding_size, init=not check_out, train_cnn=args.train_cnn).to(device)
+    encoder = Encoder(base_model=args.cnn_model, embed_size=embedding_size, init=not check_point, train_cnn=args.train_cnn).to(device)
     decoder = Decoder(vocal_size).to(device)
 
     # Transform image size to 224 or 299
@@ -156,21 +129,49 @@ if __name__ == "__main__":
         transforms.Normalize((0.485, 0.456, 0.406),
                             (0.229, 0.224, 0.225))
     ])
+    
     # Load training data
     train_loader = get_train_loader(vocab, train_image_file, train_captions_json, transform, batch_size, True)
 
+    # Load validation data
+    val_loader = get_val_loader(val_image_file, val_captions_json, transform)
+
     # load model from a check point
-    if check_out:
+    if check_point:
         encoder.load_state_dict(torch.load(args.encoder_model_path))
         decoder.load_state_dict(torch.load(args.decoder_model_path))
-
-    # Load all vocabulary in the data set
-    vocab = vocab_loader("vocab.txt")
-
 
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, list(encoder.parameters()) + list(decoder.parameters())), lr=learning_rate)
-        
+        filter(lambda p: p.requires_grad, list(encoder.parameters()) + list(decoder.parameters())), lr=args.learning_rate)
+    
+    for epoch in range(args.num_epochs):
+        train(epoch=epoch, num_epochs=args.num_epochs, vocab=vocab, train_loader=train_loader, encoder=encoder, decoder=decoder, optimizer=optimizer, criterion=criterion)
+        validation(vocab=vocab, val_loader=val_loader, encoder=encoder, decoder=decoder)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--cnn_model', type=str,
+                        default='resnet152',
+                        help='model choices passed to Encoder, if it is inception resize to 299')
+    # load/save model path
+    parser.add_argument('--encoder_model_path', type=str, default='',
+                        help='path for encoder model')
+    parser.add_argument('--decoder_model_path', type=str, default='',
+                        help='path for decoder model')
+    parser.add_argument('--saving_model_path', type=str, default='/scratch/dd2645/cv-project/models',
+                        help='path to save models')
+    # Number of Epochs
+    parser.add_argument('--num_epochs', type=int, default=200,
+                        help='Number of Epochs')
+    # Learning rate
+    parser.add_argument('--learning_rate', type=float, default=0.001,
+                        help='Learning rate')
+    # Tune CNN or not
+    parser.add_argument('--train_cnn', type=bool, default=False,
+                        help='argument in Encoder')
+    args = parser.parse_args()
+
     main(args)
