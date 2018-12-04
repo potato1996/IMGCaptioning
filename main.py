@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import torch
 import torch.nn as nn
@@ -14,15 +15,12 @@ from vocabloader import vocab_loader
 batch_size = 64
 embedding_size = 512
 vocal_size = 9957
-learning_rate = 0.001
-num_epochs = 200
+
+
 # argument
 log_step = 100
 
-check_point = False
 saving_model_path = "/scratch/dd2645/cv-project/models"
-encoder_model_path = saving_model_path + "/encoder-1.ckpt"
-decoder_model_path = saving_model_path+ "/decoder-1.ckpt"
 
 train_image_file = "/scratch/dd2645/mscoco/train2017"
 train_captions_json = "/scratch/dd2645/mscoco/annotations/captions_train2017.json"
@@ -31,36 +29,9 @@ val_captions_json = "/scratch/dd2645/mscoco/annotations/captions_val2017.json"
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# Transform image size to 224
-transform = transforms.Compose([
-    transforms.RandomResizedCrop(224),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize((0.485, 0.456, 0.406),
-                         (0.229, 0.224, 0.225))
-])
-
-# Build the models
-encoder = Encoder(embed_size=embedding_size).to(device)
-decoder = Decoder(vocal_size).to(device)
-
-# load model from a check point
-if check_point:
-    encoder.load_state_dict(torch.load(encoder_model_path))
-    decoder.load_state_dict(torch.load(decoder_model_path))
-
-# Load all vocabulary in the data set
-vocab = vocab_loader("vocab.txt")
-# Load training data
-train_loader = get_train_loader(vocab, train_image_file, train_captions_json, transform, batch_size, True)
-
-# Loss and optimizer
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(
-    filter(lambda p: p.requires_grad, list(encoder.parameters()) + list(decoder.parameters())), lr=learning_rate)
 
 
-def train(epoch):
+def train(epoch, num_epochs):
     encoder.train(True)
     decoder.train(True)
     # Train the models
@@ -141,11 +112,65 @@ def validation():
     print(bleu_score)
 
 
-def main():
-    for epoch in range(num_epochs):
-        train(epoch)
+def main(args):
+    for epoch in range(args.num_epochs):
+        train(epoch, args.num_epochs)
         validation()
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--cnn_model', type=str,
+                        default='resnet152',
+                        help='model choices passed to Encoder, if it is inception resize to 299')
+    # Encoder model path
+    parser.add_argument('--encoder_model_path', type=str, default='',
+                        help='path for encoder model')
+    parser.add_argument('--decoder_model_path', type=str, default='',
+                        help='path for decoder model')
+    # Number of Epochs
+    parser.add_argument('--num_epochs', type=int, default=50,
+                        help='Number of Epochs')
+    # Learning rate
+    parser.add_argument('--learning_rate', type=float, default=0.001,
+                        help='Learning rate')
+    # Tune CNN or not
+    parser.add_argument('--train_cnn', type=bool, default=False,
+                        help='argument in Encoder')
+    args = parser.parse_args()
+
+    # If path is not empty, set check_out = True
+    check_point = True if args.encoder_model_path and args.decoder_model_path else False
+        
+
+    # Build the models
+    encoder = Encoder(base_mode=args.cnn_model, embed_size=embedding_size, init=not check_out, train_cnn=args.train_cnn).to(device)
+    decoder = Decoder(vocal_size).to(device)
+
+    # Transform image size to 224 or 299
+    size_of_image = 299 if args.cnn_model == "inception" else 224
+    transform = transforms.Compose([
+        transforms.RandomResizedCrop(size_of_image),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.485, 0.456, 0.406),
+                            (0.229, 0.224, 0.225))
+    ])
+    # Load training data
+    train_loader = get_train_loader(vocab, train_image_file, train_captions_json, transform, batch_size, True)
+
+    # load model from a check point
+    if check_out:
+        encoder.load_state_dict(torch.load(args.encoder_model_path))
+        decoder.load_state_dict(torch.load(args.decoder_model_path))
+
+    # Load all vocabulary in the data set
+    vocab = vocab_loader("vocab.txt")
+
+
+    # Loss and optimizer
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(
+        filter(lambda p: p.requires_grad, list(encoder.parameters()) + list(decoder.parameters())), lr=learning_rate)
+        
+    main(args)
