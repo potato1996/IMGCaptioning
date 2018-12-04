@@ -87,7 +87,6 @@ def validation(vocab, val_loader, encoder, decoder):
             image = image.to(device)
             # captions = cations.to(device)??
             feature = encoder(image)
-            # where is the soft-max?
             output_caption = decoder.sample(feature)
 
             # exclude <pad> <start> <end>
@@ -100,7 +99,7 @@ def validation(vocab, val_loader, encoder, decoder):
                 else:
                     output_without_nonstring.append(vocab.vec2word(idx))
             output_captions[i] = [" ".join(output_without_nonstring)]
-            ref_captions[i] = captions
+            ref_captions[i] = [ref_caption[0] for ref_caption in captions]
 
     bleu_score = evaluate(ref_captions, output_captions)
     print(bleu_score)

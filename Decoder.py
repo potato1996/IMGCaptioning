@@ -8,15 +8,16 @@ from torch.autograd import Variable
 class Decoder(nn.Module):
     """ Decoder part(training) -- A RNN Decoder to produce the target captioning """
 
-    def __init__(self, vocab_size, input_size=512, hidden_size=1024, num_layers=1, max_dec_len=16):
+    def __init__(self, vocab_size, input_size=512, hidden_size=1024, num_layers=1, max_dec_len=16, drop_rate=0.2):
         """
         Args:
             vocab_size (int) - Size of the vocabulary => given by xxx.py
             input_size (int) - Default: 512 - Size of the input to the LSTM
             hidden_size (int) - Default: 1024 - Size of the output(and also the size of hidden state) of the LSTM
             num_layers (int) - Default: 1 - Number of layers in LSTM
-            max_dec_len (int) - Default: 16 - Max decoding length
-    
+            max_dec_len (int) - Default: 20 - Max decoding length
+            drop_rate (float) - Default: 0.2 - drop out rate
+        
         Returns:
             None
         """
@@ -28,6 +29,7 @@ class Decoder(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.max_dec_len = max_dec_len
+        self.drop_rate = drop_rate
 
         """1. input embedding layer convert the input word index to a vector - word2vec"""
         self.input_embedding = nn.Embedding(vocab_size, input_size)
@@ -37,6 +39,11 @@ class Decoder(nn.Module):
 
         """3. A single FC layer at the output of LSTM, mapping back into word"""
         self.output_fc = nn.Linear(hidden_size, vocab_size)
+
+        """4. Drop out layer before the laster FC"""
+        self.dropout = nn.Dropout(self.drop_rate)
+
+        self.init_weights()
 
     def init_weights(self):
         initrange = 0.1
@@ -87,7 +94,7 @@ class Decoder(nn.Module):
         # outputs    = outputs[unperm_index]  
 
         # 8. map back into vocab..
-        outputs = self.output_fc(outputs)  # (batch, max_len + 1, vocab_size)
+        outputs = self.output_fc(self.dropout(outputs))  # (batch, max_len + 1, vocab_size)
 
         # Maybe we will need to put softmax here?
 

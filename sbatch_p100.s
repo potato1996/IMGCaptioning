@@ -5,4 +5,4 @@
 #SBATCH --time=8:00:00
 #SBATCH --job-name=cv-run-1
 source ${HOME}/.bashrc
-python3 $HOME/IMGCaptioning/main.py
+python3 ${HOME}/IMGCaptioning/main.py
