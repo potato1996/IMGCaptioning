@@ -128,7 +128,7 @@ def validation():
                     continue
                 else:
                     output_without_nonstring.append(vocab.vec2word(idx))
-            output_captions[i] = " ".join(output_without_nonstring)
+            output_captions[i] = [" ".join(output_without_nonstring)]
             ref_captions[i] = captions
             #for caption in captions:
             #    caption_tmp = []
