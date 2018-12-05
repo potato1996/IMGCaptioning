@@ -20,7 +20,6 @@ vocal_size = 9957
 # argument
 log_step = 100
 
-saving_model_path = "/scratch/dd2645/cv-project/models"
 train_image_file = "/scratch/dd2645/mscoco/train2017"
 train_captions_json = "/scratch/dd2645/mscoco/annotations/captions_train2017.json"
 val_image_file = "/scratch/dd2645/mscoco/val2017"
@@ -30,7 +29,7 @@ val_captions_json = "/scratch/dd2645/mscoco/annotations/captions_val2017.json"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def train(epoch, num_epochs, vocab, train_loader, encoder, decoder, optimizer, criterion):
+def train(epoch, num_epochs, vocab, train_loader, encoder, decoder, optimizer, criterion, saving_model_path):
     
     encoder.train(True)
     decoder.train(True)
@@ -45,10 +44,7 @@ def train(epoch, num_epochs, vocab, train_loader, encoder, decoder, optimizer, c
         lengths = torch.tensor(lengths).to(device)
         
         # Exclude the "<start>" from loss function
-        captions = captions[:, 1:]
         lengths_1 = lengths - 1
-
-        targets = pack_padded_sequence(captions, lengths_1, batch_first=True).data
 
         encoder.zero_grad()
         decoder.zero_grad()
@@ -59,6 +55,10 @@ def train(epoch, num_epochs, vocab, train_loader, encoder, decoder, optimizer, c
         outputs = outputs[:, 1:, :]
         outputs = pack_padded_sequence(outputs, lengths_1, batch_first=True).data
        
+
+        targets = captions[:, 1:]
+        targets = pack_padded_sequence(targets, lengths_1, batch_first=True).data
+        
         loss = criterion(outputs, targets)
         loss.backward()
         optimizer.step()
@@ -88,7 +88,9 @@ def validation(vocab, val_loader, encoder, decoder):
             # captions = cations.to(device)??
             feature = encoder(image)
             output_caption = decoder.sample(feature)
-
+            
+            if i == 0:
+                print(output_caption)
             # exclude <pad> <start> <end>
             output_without_nonstring = []
             for idx in output_caption:
@@ -146,7 +148,7 @@ def main(args):
         filter(lambda p: p.requires_grad, list(encoder.parameters()) + list(decoder.parameters())), lr=args.learning_rate)
     
     for epoch in range(args.num_epochs):
-        train(epoch=epoch, num_epochs=args.num_epochs, vocab=vocab, train_loader=train_loader, encoder=encoder, decoder=decoder, optimizer=optimizer, criterion=criterion)
+        train(epoch=epoch, num_epochs=args.num_epochs, vocab=vocab, train_loader=train_loader, encoder=encoder, decoder=decoder, optimizer=optimizer, criterion=criterion, saving_model_path)
         validation(vocab=vocab, val_loader=val_loader, encoder=encoder, decoder=decoder)
 
 
