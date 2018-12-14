@@ -123,35 +123,20 @@ class Decoder(nn.Module):
             else:
                 if i == 1:
                     # Assuming that 1 is the index of <start>
-<<<<<<< HEAD
-                    inputs = torch.ones((1, 1), dtype=torch.long, requires_grad=False).cuda()
-=======
                     inputs = torch.tensor([1], dtype=torch.long).cuda()
                     inputs = inputs.unsqueeze(1)  # (1, 1)
->>>>>>> 88246f9f2c9bf04e4417731d6c8e762e52a0cc35
                     inputs = self.input_embedding(inputs)  # (1, 1, input_size)
 
                 outputs, hiddens = self.lstm(inputs, hiddens)  # (1, 1, hidden_size)
 
-<<<<<<< HEAD
-                outputs = self.output_fc(outputs.view(-1))  # (vocab_size)
-                _, predicted = outputs.max(0)  # (1)
-                prediction_ids.append(predicted)
-=======
                 outputs = self.output_fc(outputs.squeeze(1))  # (1, vocab_size)
                 _, predicted = outputs.max(1)  # (1)
                 prediction_ids.append(predicted.cpu().data.tolist()[0])
->>>>>>> 88246f9f2c9bf04e4417731d6c8e762e52a0cc35
 
                 """ feed current symbol as the input of the next symbol """
                 inputs = self.input_embedding(predicted.view(1, 1))  # (1, 1, input_size)
                 #inputs = inputs.unsqueeze(1)  # (1, 1, input_size)
 
-<<<<<<< HEAD
-        prediction_ids = torch.stack(prediction_ids, 0)  # (max_dec_len)
-
-=======
->>>>>>> 88246f9f2c9bf04e4417731d6c8e762e52a0cc35
         return prediction_ids
     
     def sample_beam(self, img_embedding, beam_width):
@@ -165,13 +150,3 @@ class Decoder(nn.Module):
         outputs, hiddens = self.lstm(inputs)
 
         pass
-
-           
-
-
-
-class BeamSearchDecoder(Decoder):
-    """ Beam Search decoder(inference) -- Use the same parameters as Decoder, but apply beam search techniques instead of gready search """
-
-    def sample(self, img_embedding):
-        """ Override the sample method with beam search, here we assume that the batch size is 1 """

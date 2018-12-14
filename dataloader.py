@@ -28,6 +28,16 @@ class CocoCaptionsTrain(data.Dataset):
         self.ids = list(self.coco.imgs.keys())
         self.transform = transform
 
+        self.idmap = []
+
+        coco = self.coco
+        for img_id in self.ids:
+            ann_ids = coco.getAnnIds(imgIds=img_id)
+            for ann_id in ann_ids:
+                self.idmap.append((img_id, ann_id))
+
+
+
     def __getitem__(self, index):
         """
         Args:
@@ -36,9 +46,7 @@ class CocoCaptionsTrain(data.Dataset):
         Returns:
             tuple: Tuple (image, target). target is a list of indices for the image.
         """
-        coco = self.coco
-        img_id = self.ids[index]
-        ann_ids = coco.getAnnIds(imgIds=img_id)
+        img_id, ann_id = self.idmap[index]
         anns = coco.loadAnns(ann_ids)
         target = [ann['caption'] for ann in anns]
 
