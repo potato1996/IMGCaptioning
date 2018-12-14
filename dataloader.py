@@ -100,8 +100,9 @@ def train_collate_fn(data):
     return images, targets, lengths
 
 
-def get_train_loader(vocab, root, annFile, transform, batch_size, shuffle=True, num_workers=8):
+def get_train_loader(vocab, root, annFile, transform, batch_size, shuffle=True, num_workers=16):
     train_set = CocoCaptionsTrain(vocab, root, annFile, transform)
+    print("Training Set Size:" + str(len(train_set)))
     train_set_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=batch_size, shuffle=shuffle,
                                                    num_workers=num_workers, collate_fn=train_collate_fn)
     return train_set_loader
