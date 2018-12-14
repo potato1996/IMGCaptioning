@@ -47,7 +47,8 @@ class CocoCaptionsTrain(data.Dataset):
             tuple: Tuple (image, target). target is a list of indices for the image.
         """
         img_id, ann_id = self.idmap[index]
-        anns = coco.loadAnns(ann_ids)
+        coco = self.coco
+        anns = coco.loadAnns([ann_id])
         target = [ann['caption'] for ann in anns]
 
         path = coco.loadImgs(img_id)[0]['file_name']
@@ -67,7 +68,7 @@ class CocoCaptionsTrain(data.Dataset):
         return img, target
 
     def __len__(self):
-        return len(self.ids)
+        return len(self.idmap)
 
 
 def train_collate_fn(data):
