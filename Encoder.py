@@ -6,7 +6,7 @@ import torchvision.models as models
 class Encoder(nn.Module):
     """ Encoder part -- A CNN Encoder to produce the features of given image """
 
-    def __init__(self, base_model="inception", embed_size=512, init=True, train_cnn=False):
+    def __init__(self, base_model="resnet152", embed_size=512, init=True, train_cnn=False):
         """
         Args:
             base_model (string) - Default: "inception" 
@@ -45,7 +45,7 @@ class Encoder(nn.Module):
         """ Replace the last FC layer/classifier """
         if base_model.startswith("resnet"):
             self.fc = nn.Linear(self.model.fc.in_features, embed_size)
-            modules = list(self.model.children())[:-1]
+            modules = list(self.model.children())[:-2]
             self.model = nn.Sequential(*modules)
             self.pool = nn.AvgPool2d(kernel_size=7, stride=1)
             self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
@@ -93,5 +93,4 @@ class Encoder(nn.Module):
         features = features.reshape(features.size(0), -1)
         features = self.fc(features)
         features = self.bn(features)
-
         return features

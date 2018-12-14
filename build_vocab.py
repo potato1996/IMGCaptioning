@@ -52,8 +52,8 @@ def build_vocab(json, threshold=5):
 
     # Create a vocab wrapper and add some special tokens.
     vocab = Vocabulary()
-    vocab.add_word('<start>')
     vocab.add_word('<pad>')
+    vocab.add_word('<start>')
     vocab.add_word('<end>')
     vocab.add_word('<unk>')
 
@@ -66,7 +66,7 @@ def build_vocab(json, threshold=5):
 def main(args):
     vocab = build_vocab(json=args.caption_path, threshold=args.threshold)
     vocab_path = args.vocab_path
-    with open(vocab_path, 'w') as f:
+    with open(vocab_path, 'w+') as f:
         # example: for mapping {"a":1, "b":2} create and write "a b" into vocab.path
         f.write("\n".join(list(vocab.word2idx.keys())))
     print("Total vocabulary size: {}".format(vocab.size()))
@@ -80,7 +80,7 @@ if __name__ == '__main__':
                         default='data/annotations/captions_train2014.json',
                         help='path for train annotation file')
     # Address to store the mapping
-    parser.add_argument('--vocab_path', type=str, default='./data/vocab.txt',
+    parser.add_argument('--vocab_path', type=str, default='vocab.txt',
                         help='path for saving vocabulary wrapper')
     # Optional argument, 4 or 5 or 10, try it
     parser.add_argument('--threshold', type=int, default=4,
