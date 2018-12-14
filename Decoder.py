@@ -31,6 +31,8 @@ class Decoder(nn.Module):
         self.num_layers = num_layers
         self.max_dec_len = max_dec_len
         self.drop_rate = drop_rate
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
         """1. input embedding layer convert the input word index to a vector - word2vec"""
         self.input_embedding = nn.Embedding(vocab_size, input_size)
@@ -124,7 +126,7 @@ class Decoder(nn.Module):
             else:
                 if i == 1:
                     # Assuming that 1 is the index of <start>
-                    inputs = torch.tensor([1], dtype=torch.long).cuda()
+                    inputs = torch.tensor([1], dtype=torch.long).to(self.device)
                     inputs = inputs.unsqueeze(1)  # (1, 1)
                     inputs = self.input_embedding(inputs)  # (1, 1, input_size)
 
@@ -271,7 +273,7 @@ class Decoder(nn.Module):
 
             # encode as vectors
             it = beam_seq[t]
-            logprobs, state = self.get_logprobs_state(Variable(it.cuda()), *(args + (state,)))
+            logprobs, state = self.get_logprobs_state(it.to(self.device), *(args + (state,)))
 
         done_beams = sorted(done_beams, key=lambda x: -x['p'])[:beam_size]
         return done_beams

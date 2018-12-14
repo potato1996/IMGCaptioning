@@ -87,10 +87,9 @@ def validation(vocab, val_loader, encoder, decoder):
             image = image.to(device)
             # captions = cations.to(device)??
             feature = encoder(image)
+
             output_caption = decoder.sample(feature)
             
-            if i == 0:
-                print(output_caption)
             # exclude <pad> <start> <end>
             output_without_nonstring = []
             for idx in output_caption:
@@ -101,8 +100,11 @@ def validation(vocab, val_loader, encoder, decoder):
                 else:
                     output_without_nonstring.append(vocab.vec2word(idx))
             output_captions[i] = [" ".join(output_without_nonstring)]
-            ref_captions[i] = [ref_caption[0] for ref_caption in captions]
-
+            ref_captions[i] = [ref_caption[0].lower() for ref_caption in captions]
+            if i < 5:
+                print(output_captions[i])
+                print(ref_captions[i])
+ 
     bleu_score = evaluate(ref_captions, output_captions)
     print(bleu_score)
 
@@ -115,7 +117,10 @@ def main(args):
 
     # If path is not empty, set check_out = True
     check_point = True if args.encoder_model_path and args.decoder_model_path else False
-    
+  
+    curr_epoch = int(args.encoder_model_path.split('/')[-1].split('.')[0][8:]) if check_point else 0
+
+
     # Load all vocabulary in the data set
     vocab = vocab_loader("vocab.txt")   
 
@@ -125,7 +130,7 @@ def main(args):
 
     # Transform image size to 224 or 299
     size_of_image = 299 if args.cnn_model == "inception" else 224
-    transform = transforms.Compose([
+    train_transform = transforms.Compose([
         transforms.RandomResizedCrop(size_of_image),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
@@ -133,24 +138,32 @@ def main(args):
                             (0.229, 0.224, 0.225))
     ])
     
+    val_transform = transforms.Compose([
+        transforms.Resize((size_of_image, size_of_image)),
+        transforms.ToTensor(),
+        transforms.Normalize((0.485, 0.456, 0.406),
+                            (0.229, 0.224, 0.225))
+    ])
+    
     # Load training data
-    train_loader = get_train_loader(vocab, train_image_file, train_captions_json, transform, batch_size, True)
+    train_loader = get_train_loader(vocab, train_image_file, train_captions_json, train_transform, batch_size, True)
 
     # Load validation data
-    val_loader = get_val_loader(val_image_file, val_captions_json, transform)
+    val_loader = get_val_loader(val_image_file, val_captions_json, val_transform)
 
     # load model from a check point
     if check_point:
-        encoder.load_state_dict(torch.load(args.encoder_model_path))
-        decoder.load_state_dict(torch.load(args.decoder_model_path))
+        encoder.load_state_dict(torch.load(args.encoder_model_path, map_location=device))
+        decoder.load_state_dict(torch.load(args.decoder_model_path, map_location=device))
 
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(
         filter(lambda p: p.requires_grad, list(encoder.parameters()) + list(decoder.parameters())), lr=args.learning_rate)
     
-    for epoch in range(args.num_epochs):
-        train(epoch=epoch, num_epochs=args.num_epochs, vocab=vocab, train_loader=train_loader, encoder=encoder, decoder=decoder, optimizer=optimizer, criterion=criterion, saving_model_path=saving_model_path)
+    while curr_epoch < args.num_epochs:
+        curr_epoch += 1
+        train(epoch=curr_epoch, num_epochs=args.num_epochs, vocab=vocab, train_loader=train_loader, encoder=encoder, decoder=decoder, optimizer=optimizer, criterion=criterion, saving_model_path=saving_model_path)
         validation(vocab=vocab, val_loader=val_loader, encoder=encoder, decoder=decoder)
 
 
