@@ -9,14 +9,14 @@ from torch.autograd import Variable
 class Decoder(nn.Module):
     """ Decoder part(training) -- A RNN Decoder to produce the target captioning """
 
-    def __init__(self, vocab_size, input_size=512, hidden_size=1024, num_layers=1, max_dec_len=16, drop_rate=0.2):
+    def __init__(self, vocab_size, input_size=512, hidden_size=512, num_layers=1, max_dec_len=16, drop_rate=0.2):
         """
         Args:
             vocab_size (int) - Size of the vocabulary => given by xxx.py
             input_size (int) - Default: 512 - Size of the input to the LSTM
-            hidden_size (int) - Default: 1024 - Size of the output(and also the size of hidden state) of the LSTM
+            hidden_size (int) - Default: 512 - Size of the output(and also the size of hidden state) of the LSTM
             num_layers (int) - Default: 1 - Number of layers in LSTM
-            max_dec_len (int) - Default: 20 - Max decoding length
+            max_dec_len (int) - Default: 16 - Max decoding length
             drop_rate (float) - Default: 0.2 - drop out rate
         
         Returns:

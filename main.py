@@ -12,7 +12,7 @@ from dataloader import *
 from vocabloader import vocab_loader
 
 # hyper-parameters
-batch_size = 64
+batch_size = 512
 embedding_size = 512
 vocal_size = 9957
 
@@ -108,6 +108,8 @@ def validation(vocab, val_loader, encoder, decoder):
 
 
 def main(args):
+    print(device)
+
     # Path to save the trained models
     saving_model_path = args.saving_model_path
 
@@ -119,7 +121,7 @@ def main(args):
 
     # Build the models
     encoder = Encoder(base_model=args.cnn_model, embed_size=embedding_size, init=not check_point, train_cnn=args.train_cnn).to(device)
-    decoder = Decoder(vocal_size).to(device)
+    decoder = Decoder(vocal_size, input_size=embedding_size).to(device)
 
     # Transform image size to 224 or 299
     size_of_image = 299 if args.cnn_model == "inception" else 224
@@ -148,7 +150,7 @@ def main(args):
         filter(lambda p: p.requires_grad, list(encoder.parameters()) + list(decoder.parameters())), lr=args.learning_rate)
     
     for epoch in range(args.num_epochs):
-        train(epoch=epoch, num_epochs=args.num_epochs, vocab=vocab, train_loader=train_loader, encoder=encoder, decoder=decoder, optimizer=optimizer, criterion=criterion, saving_model_path)
+        train(epoch=epoch, num_epochs=args.num_epochs, vocab=vocab, train_loader=train_loader, encoder=encoder, decoder=decoder, optimizer=optimizer, criterion=criterion, saving_model_path=saving_model_path)
         validation(vocab=vocab, val_loader=val_loader, encoder=encoder, decoder=decoder)
 
 
