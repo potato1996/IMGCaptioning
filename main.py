@@ -12,7 +12,6 @@ from dataloader import *
 from vocabloader import vocab_loader
 
 # hyper-parameters
-batch_size = 512
 embedding_size = 512
 vocal_size = 9957
 
@@ -70,9 +69,9 @@ def train(epoch, num_epochs, vocab, train_loader, encoder, decoder, optimizer, c
 
     # Save the model checkpoints
     torch.save(decoder.state_dict(), os.path.join(
-        saving_model_path, 'decoder-{}.ckpt'.format(epoch + 1)))
+        saving_model_path, 'decoder-{}.ckpt'.format(epoch)))
     torch.save(encoder.state_dict(), os.path.join(
-        saving_model_path, 'encoder-{}.ckpt'.format(epoch + 1)))
+        saving_model_path, 'encoder-{}.ckpt'.format(epoch)))
 
 
 def validation(vocab, val_loader, encoder, decoder):
@@ -126,7 +125,7 @@ def main(args):
 
     # Build the models
     encoder = Encoder(base_model=args.cnn_model, embed_size=embedding_size, init=not check_point, train_cnn=args.train_cnn).to(device)
-    decoder = Decoder(vocal_size, input_size=embedding_size).to(device)
+    decoder = Decoder(vocab_size=vocal_size, input_size=embedding_size, hidden_size=args.hidden_size).to(device)
 
     # Transform image size to 224 or 299
     size_of_image = 299 if args.cnn_model == "inception" else 224
@@ -146,7 +145,7 @@ def main(args):
     ])
     
     # Load training data
-    train_loader = get_train_loader(vocab, train_image_file, train_captions_json, train_transform, batch_size, True)
+    train_loader = get_train_loader(vocab, train_image_file, train_captions_json, train_transform, args.batch_size, True)
 
     # Load validation data
     val_loader = get_val_loader(val_image_file, val_captions_json, val_transform)
@@ -185,6 +184,13 @@ if __name__ == "__main__":
     # Learning rate
     parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='Learning rate')
+
+    # Model Parameter
+    parser.add_argument('--hidden_size', type=int, default=512,
+                        help='LSTM hidden size')
+
+    parser.add_argument('--batch_size', type=int, default=256,
+                        help='batch size')
     # Tune CNN or not
     parser.add_argument('--train_cnn', type=bool, default=False,
                         help='argument in Encoder')

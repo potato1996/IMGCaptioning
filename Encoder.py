@@ -39,7 +39,7 @@ class Encoder(nn.Module):
         if base_model == "resnet152":
             self.model = models.resnet152(init)
         if base_model == "inception":
-            self.model = models.inception_v3(init)
+            self.model = models.inception_v3(init, aux_logits=False)
         assert self.model is not None, "Error, unknown CNN model structure"
 
         """ Replace the last FC layer/classifier """
@@ -51,7 +51,7 @@ class Encoder(nn.Module):
             self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
         if base_model.startswith("vgg"):
-            self.fc = nn.Linear(self.model.classifier[0].in_features, embed_size)
+            self.fc = nn.Linear(512, embed_size)
             modules = list(self.model.children())[:-1]
             self.model = nn.Sequential(*modules)
             self.pool = nn.AvgPool2d(kernel_size=7, stride=1)
