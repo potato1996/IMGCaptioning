@@ -143,137 +143,85 @@ class Decoder(nn.Module):
         return prediction_ids
     
     def sample_beam(self, img_embedding, beam_width):
-        seq = torch.LongTensor(self.max_dec_len).zero_()
-        seqLogprobs = torch.FloatTensor(self.max_dec_len)
-
+        hypos = []
+        masks = []
+        
         # 1. the first input should be image
-        inputs = img_embedding.expand(beam_width, self.input_size).unsequeeze(1)  # (beam_width, 1, input_size)
+        inputs = img_embedding.unsqueeze(1)  # (1, 1, input_size)
 
         # 2. run the first input through the lstm
         _, hiddens = self.lstm(inputs)
 
-        # New
-        batch_size = 1
+        # 3. The first input of sentense is <start>(1)
+        inputs = torch.tensor([1], dtype=torch.long).to(self.device)
+        inputs = inputs.unsqueeze(1) # (1, 1)
+        inputs = self.input_embedding(inputs) # (1, 1, input_size)
 
-        assert beam_width <= self.vocab_size + 1, 'lets assume this for now, otherwise this corner case causes a few headaches down the road. can be dealt with in future if needed'
-        seq = torch.LongTensor(self.max_dec_len, batch_size).zero_()
-        seqLogprobs = torch.FloatTensor(self.max_dec_len, batch_size)
-        # lets process every image independently for now, for simplicity
+        # 4. run the lstm through start
+        outputs, hiddens = self.lstm(inputs, hiddens) # (1, 1, hidden_size)
+        outputs = self.output_fc(outputs.squeeze(1)) #(1, vocab_size)
 
+        # Get the starters right after <start>
+        track_table = [[] for i in range(beam_width)]
 
-        it = torch.ones(beam_width)  # bean_width
-        xt = self.input_embedding(it)  # (beam_width, input_size)
+        outputs = outputs.view(-1)
+        _, topk_idx = torch.topk(outputs, beam_width) #[beam_width]
 
-        output, state = self.lstm(xt.unsqueeze(0), hiddens)
-        logprobs = F.log_softmax(self.output_fc(self.dropout(output.squeeze(0))))
+        next_word_idx = topk_idx % self.vocab_size
+        prev_beam_id  = topk_idx / self.vocab_size 
 
-        self.done_beams = self.beam_search(state, logprobs, beam_width)
-        seq[:] = self.done_beams[0]['seq']  # the first beam has highest cumulative score
-        seqLogprobs[:] = self.done_beams[0]['logps']
-
-        # return the samples and their log likelihoods
-        return seq.transpose(0, 1), seqLogprobs.transpose(0, 1)
-
-    def beam_search(self, state, logprobs, beam_size=10):
-        # args are the miscelleous inputs to the core in addition to embedded word and state
-        # kwargs only accept opt
-
-        def beam_step(logprobsf, beam_size, t, beam_seq, beam_seq_logprobs, beam_logprobs_sum, state):
-            # INPUTS:
-            # logprobsf: probabilities augmented after diversity
-            # beam_size: obvious
-            # t        : time instant
-            # beam_seq : tensor contanining the beams
-            # beam_seq_logprobs: tensor contanining the beam logprobs
-            # beam_logprobs_sum: tensor contanining joint logprobs
-            # OUPUTS:
-            # beam_seq : tensor containing the word indices of the decoded captions
-            # beam_seq_logprobs : log-probability of each decision made, same size as beam_seq
-            # beam_logprobs_sum : joint log-probability of each beam
-
-            ys, ix = torch.sort(logprobsf, 1, True)
-            candidates = []
-            cols = min(beam_size, ys.size(1))
-            rows = beam_size
-            if t == 0:
-                rows = 1
-            for c in range(cols):  # for each column (word, essentially)
-                for q in range(rows):  # for each beam expansion
-                    # compute logprob of expanding beam q with word in (sorted) position c
-                    local_logprob = ys[q, c]
-                    candidate_logprob = beam_logprobs_sum[q] + local_logprob.cpu()
-                    candidates.append(dict(c=ix[q, c], q=q,
-                                           p=candidate_logprob,
-                                           r=local_logprob))
-            candidates = sorted(candidates, key=lambda x: -x['p'])
-
-            new_state = [_.clone() for _ in state]
-            # beam_seq_prev, beam_seq_logprobs_prev
-            if t >= 1:
-                # we''ll need these as reference when we fork beams around
-                beam_seq_prev = beam_seq[:t].clone()
-                beam_seq_logprobs_prev = beam_seq_logprobs[:t].clone()
-            for vix in range(beam_size):
-                v = candidates[vix]
-                # fork beam index q into index vix
-                if t >= 1:
-                    beam_seq[:t, vix] = beam_seq_prev[:, v['q']]
-                    beam_seq_logprobs[:t, vix] = beam_seq_logprobs_prev[:, v['q']]
-                # rearrange recurrent states
-                for state_ix in range(len(new_state)):
-                    #  copy over state in previous beam q to new beam at vix
-                    new_state[state_ix][:, vix] = state[state_ix][:, v['q']]  # dimension one is time step
-                # append new end terminal at the end of this beam
-                beam_seq[t, vix] = v['c']  # c'th word is the continuation
-                beam_seq_logprobs[t, vix] = v['r']  # the raw logprob here
-                beam_logprobs_sum[vix] = v['p']  # the new (sum) logprob along this beam
-            state = new_state
-            return beam_seq, beam_seq_logprobs, beam_logprobs_sum, state, candidates
-
+        for beam_id in range(beam_width):
+            track_table[beam_id].append((next_word_idx[beam_id], prev_beam_id[beam_id]))
+        hiddens = (hiddens[0].expand((1, beam_width, self.hidden_size)), hiddens[1].expand((1, beam_width, self.hidden_size)))
+        
         # start beam search
+        for seq_id in range(self.max_dec_len - 1):
+            # calculate next input
+            inputs = next_word_idx.unsqueeze(1) #(beam, 1)
+            inputs = self.input_embedding(inputs) #(beam, 1, input_size)
 
-        beam_seq = torch.LongTensor(self.seq_length, beam_size).zero_()
-        beam_seq_logprobs = torch.FloatTensor(self.seq_length, beam_size).zero_()
-        # running sum of logprobs for each beam
-        beam_logprobs_sum = torch.zeros(beam_size)
-        done_beams = []
+            # calculate next hidden
+            next_hidden_0 = torch.zeros(hiddens[0].size())
+            next_hidden_1 = torch.zeros(hiddens[1].size())
+            for beam_id in range(beam_width):
+                next_hidden_0[0][beam_id][:] = hiddens[0][0][prev_beam_id[beam_id]][:]
+                next_hidden_1[0][beam_id][:] = hiddens[1][0][prev_beam_id[beam_id]][:]
 
-        for t in range(self.seq_length):
-            """pem a beam merge. that is,
-            for every previous beam we now many new possibilities to branch out
-            we need to resort our beams to maintain the loop invariant of keeping
-            the top beam_size most likely sequences."""
-            logprobsf = logprobs.data.float()  # lets go to CPU for more efficiency in indexing operations
-            # suppress UNK tokens in the decoding
-            logprobsf[:, logprobsf.size(1) - 1] = logprobsf[:, logprobsf.size(1) - 1] - 1000
+            # run through lstm
+            outputs, hiddens = self.lstm(inputs, (next_hidden_0, next_hidden_1))
+            outputs = self.output_fc(outputs.squeeze(0)).view(-1)
+            scores  = F.log_softmax(outputs) # (beam * vocab_size)
 
-            beam_seq, \
-            beam_seq_logprobs, \
-            beam_logprobs_sum, \
-            state, \
-            candidates_divm = beam_step(logprobsf,
-                                        beam_size,
-                                        t,
-                                        beam_seq,
-                                        beam_seq_logprobs,
-                                        beam_logprobs_sum,
-                                        state)
+            for beam_id in masks:
+                for i in range(self.vocab_size):
+                    scores[beam_id * self.vocab_size + i] = -100000
 
-            for vix in range(beam_size):
-                # if time's up... or if end token is reached then copy beams
-                if beam_seq[t, vix] == 0 or t == self.seq_length - 1:
-                    final_beam = {
-                        'seq': beam_seq[:, vix].clone(),
-                        'logps': beam_seq_logprobs[:, vix].clone(),
-                        'p': beam_logprobs_sum[vix]
-                    }
-                    done_beams.append(final_beam)
-                    # don't continue beams from finished sequences
-                    beam_logprobs_sum[vix] = -1000
+            _, topk_idx = torch.topk(scores, beam_width) # (beam)
+            
+            next_word_idx = topk_idx % self.vocab_size
+            prev_beam_id = topk_idx / self.vocab_size
+            
+            masks = []
+            for beam_id in range(beam_width):
+                track_table[beam_id].append((next_word_idx[beam_id], prev_beam_id[beam_id]))
 
-            # encode as vectors
-            it = beam_seq[t]
-            logprobs, state = self.get_logprobs_state(it.to(self.device), *(args + (state,)))
+                # back tracking, if we meet end
+                if next_word_idx[beam_id] == 2 or next_word_idx[beam_id] == 19 or seq_id == self.max_dec_len-2:
+                    masks.append(beam_id)
+                    prediction_ids = []
+                    next_beam_id = beam_id
+                    for track_seq_id in range(seq_id + 1, -1, -1):
+                        track_word, track_beam_id = track_table[next_beam_id][track_seq_id]
+                        prediction_ids.append(track_word.cpu().data.tolist())
+                        next_beam_id = track_beam_id.cpu().data.tolist()
+                    prediction_ids.reverse()
+                    hypos.append((scores[topk_idx[beam_id]], prediction_ids))
 
-        done_beams = sorted(done_beams, key=lambda x: -x['p'])[:beam_size]
-        return done_beams
+        hypos.sort(key=lambda x:-x[0])
+        return [hypos[i][1] for i in range(beam_width)]
+
+
+
+
+
+

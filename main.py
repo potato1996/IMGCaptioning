@@ -29,7 +29,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def train(epoch, num_epochs, vocab, train_loader, encoder, decoder, optimizer, criterion, saving_model_path):
-    
+    print("now in training")
     encoder.train(True)
     decoder.train(True)
     
@@ -74,7 +74,7 @@ def train(epoch, num_epochs, vocab, train_loader, encoder, decoder, optimizer, c
         saving_model_path, 'encoder-{}.ckpt'.format(epoch)))
 
 
-def validation(vocab, val_loader, encoder, decoder):
+def validation(vocab, val_loader, encoder, decoder, beam_width):
     encoder.eval()
     decoder.eval()
     output_captions = dict()  # Map(ID -> List(sentences))
@@ -87,18 +87,32 @@ def validation(vocab, val_loader, encoder, decoder):
             # captions = cations.to(device)??
             feature = encoder(image)
 
-            output_caption = decoder.sample(feature)
+            output_caption = decoder.sample(feature, beam_width=beam_width)
             
-            # exclude <pad> <start> <end>
-            output_without_nonstring = []
-            for idx in output_caption:
-                if idx == 2:
-                    break
-                elif idx <= 3:
-                    continue
-                else:
-                    output_without_nonstring.append(vocab.vec2word(idx))
-            output_captions[i] = [" ".join(output_without_nonstring)]
+            if beam_width == 1:
+                # exclude <pad> <start> <end>
+                output_without_nonstring = []
+                for idx in output_caption:
+                    if idx == 2 or idx == 19:
+                        break
+                    elif idx <= 3:
+                        continue
+                    else:
+                        output_without_nonstring.append(vocab.vec2word(idx))
+                output_captions[i] = [" ".join(output_without_nonstring)]
+            else:
+                output_captions[i] = []
+                for beam_id in range(beam_width):
+                    output_without_nonstring = []
+                    for idx in output_caption[beam_id]:
+                        if idx == 2 or idx == 19:
+                            break
+                        elif idx <= 3:
+                            continue
+                        else:
+                            output_without_nonstring.append(vocab.vec2word(idx))
+                    output_captions[i].append(" ".join(output_without_nonstring))
+
             ref_captions[i] = [ref_caption[0].lower() for ref_caption in captions]
             if i < 5:
                 print(output_captions[i])
@@ -163,7 +177,7 @@ def main(args):
     while curr_epoch < args.num_epochs:
         curr_epoch += 1
         train(epoch=curr_epoch, num_epochs=args.num_epochs, vocab=vocab, train_loader=train_loader, encoder=encoder, decoder=decoder, optimizer=optimizer, criterion=criterion, saving_model_path=saving_model_path)
-        validation(vocab=vocab, val_loader=val_loader, encoder=encoder, decoder=decoder)
+        validation(vocab=vocab, val_loader=val_loader, encoder=encoder, decoder=decoder, beam_width=args.beam_width)
 
 
 if __name__ == "__main__":
@@ -185,6 +199,9 @@ if __name__ == "__main__":
     parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='Learning rate')
 
+    # Beam width
+    parser.add_argument('--beam_width', type=int, default=1,
+                        help='beam width')
     # Model Parameter
     parser.add_argument('--hidden_size', type=int, default=512,
                         help='LSTM hidden size')
