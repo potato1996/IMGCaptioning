@@ -89,32 +89,20 @@ def validation(vocab, val_loader, encoder, decoder, beam_width):
 
             output_caption = decoder.sample(feature, beam_width=beam_width)
             
-            if beam_width == 1:
-                # exclude <pad> <start> <end>
-                output_without_nonstring = []
-                for idx in output_caption:
-                    if idx == 2 or idx == 19:
-                        break
-                    elif idx <= 3:
-                        continue
-                    else:
-                        output_without_nonstring.append(vocab.vec2word(idx))
-                output_captions[i] = [" ".join(output_without_nonstring)]
-            else:
-                output_captions[i] = []
-                for beam_id in range(beam_width):
-                    output_without_nonstring = []
-                    for idx in output_caption[beam_id]:
-                        if idx == 2 or idx == 19:
-                            break
-                        elif idx <= 3:
-                            continue
-                        else:
-                            output_without_nonstring.append(vocab.vec2word(idx))
-                    output_captions[i].append(" ".join(output_without_nonstring))
-
+            # exclude <pad> <start> <end>
+            output_without_nonstring = []
+            for idx in output_caption:
+                if idx == 2 or idx == 19:
+                    break
+                elif idx <= 3:
+                    continue
+                else:
+                    output_without_nonstring.append(vocab.vec2word(idx))
+            
+            output_captions[i] = [" ".join(output_without_nonstring)]
             ref_captions[i] = [ref_caption[0].lower() for ref_caption in captions]
-            if i < 5:
+            if i % log_step == 0:
+                print('Validation Step [{}/{}]'.format(i, len(val_loader)))
                 print(output_captions[i])
                 print(ref_captions[i])
  
