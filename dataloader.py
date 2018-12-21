@@ -11,7 +11,7 @@ import nltk
     https://github.com/pytorch/vision/blob/master/torchvision/datasets/coco.py
 
     What's changed:
-        COCO dataset provide 5 different captions for the same image. We only need 1 for training
+        COCO dataset provide 5 different captions for the same image, thus we expand each sample into 5 samples
 """
 
 

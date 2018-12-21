@@ -186,14 +186,12 @@ if __name__ == "__main__":
     # Learning rate
     parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='Learning rate')
-
     # Beam width
     parser.add_argument('--beam_width', type=int, default=1,
                         help='beam width')
     # Model Parameter
     parser.add_argument('--hidden_size', type=int, default=512,
                         help='LSTM hidden size')
-
     parser.add_argument('--batch_size', type=int, default=256,
                         help='batch size')
     # Tune CNN or not

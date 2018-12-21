@@ -103,7 +103,7 @@ class Decoder(nn.Module):
 
         return outputs
 
-    def sample(self, img_embedding, beam_width = 1):
+    def sample(self, img_embedding, beam_width = 3):
         """ 
         Inference code for Decoder
             - due to the nature of LSTM, we need to use a complete different buch of code
@@ -226,11 +226,6 @@ class Decoder(nn.Module):
                         next_beam_id = track_beam_id
                     prediction_ids.reverse()
                     hypos.append((curr_beam_scores[beam_id].cpu().data.tolist(), prediction_ids))
+                    
         hypos.sort(key=lambda x:x[0])
         return hypos[0][1]
-
-
-
-
-
-
