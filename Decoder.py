@@ -144,7 +144,6 @@ class Decoder(nn.Module):
     
     def sample_beam(self, img_embedding, beam_width):
         hypos = []
-        masks = []
         
         # 1. the first input should be image
         inputs = img_embedding.unsqueeze(1)  # (1, 1, input_size)
@@ -165,10 +164,11 @@ class Decoder(nn.Module):
         track_table = [[] for i in range(beam_width)]
 
         outputs = outputs.view(-1)
-        _, topk_idx = torch.topk(outputs, beam_width) #[beam_width]
+        scores  = -F.log_softmax(outputs)
+        curr_beam_scores, topk_idx = scores.topk(beam_width, largest=False) #[beam_width]
 
         next_word_idx = topk_idx % self.vocab_size
-        prev_beam_id  = topk_idx / self.vocab_size 
+        prev_beam_id  = topk_idx / self.vocab_size
 
         for beam_id in range(beam_width):
             track_table[beam_id].append((next_word_idx[beam_id].cpu().data.tolist(), prev_beam_id[beam_id].cpu().data.tolist()))
@@ -189,13 +189,10 @@ class Decoder(nn.Module):
 
             # run through lstm
             outputs, hiddens = self.lstm(inputs, (next_hidden_0, next_hidden_1))
-            outputs = self.output_fc(outputs.squeeze(0)).view(-1)
-            scores  = F.log_softmax(outputs) # (beam * vocab_size)
-
-
-            for beam_id in masks:
-                for i in range(self.vocab_size):
-                    scores[beam_id * self.vocab_size + i] = -100000
+            outputs = self.output_fc(outputs.squeeze(1))
+            scores  = -F.log_softmax(outputs, dim=1) # (beam, vocab_size)
+            
+            scores = curr_beam_scores.view(beam_width, 1).expand(beam_width, self.vocab_size) * scores
 
             # We have reached the max_dec_len, now back tracking
             if seq_id == self.max_dec_len-1:
@@ -207,22 +204,20 @@ class Decoder(nn.Module):
                         prediction_ids.append(track_word)
                         next_beam_id = track_beam_id
                     prediction_ids.reverse()
-                    hypos.append((scores[beam_id * self.vocab_size + 2].cpu().data.tolist(), prediction_ids))
+                    hypos.append((scores[beam_id][2].cpu().data.tolist(), prediction_ids))
                 break
 
-
-            _, topk_idx = torch.topk(scores, beam_width) # (beam)
+            
+            curr_beam_scores, topk_idx = scores.view(-1).topk(beam_width, largest=False) # (beam)
             
             next_word_idx = topk_idx % self.vocab_size
             prev_beam_id = topk_idx / self.vocab_size
             
-            masks = []
             for beam_id in range(beam_width):
                 track_table[beam_id].append((next_word_idx[beam_id].cpu().data.tolist(), prev_beam_id[beam_id].cpu().data.tolist()))
 
                 # back tracking, if we meet end
                 if next_word_idx[beam_id].cpu().data.tolist() == 2 or next_word_idx[beam_id].cpu().data.tolist() == 19:
-                    masks.append(beam_id)
                     prediction_ids = []
                     next_beam_id = beam_id
                     for track_seq_id in range(seq_id + 1, -1, -1):
@@ -230,9 +225,8 @@ class Decoder(nn.Module):
                         prediction_ids.append(track_word)
                         next_beam_id = track_beam_id
                     prediction_ids.reverse()
-                    hypos.append((scores[topk_idx[beam_id]].cpu().data.tolist(), prediction_ids))
-
-        hypos.sort(key=lambda x:-x[0])
+                    hypos.append((curr_beam_scores[beam_id].cpu().data.tolist(), prediction_ids))
+        hypos.sort(key=lambda x:x[0])
         return hypos[0][1]
 
 
