@@ -31,3 +31,5 @@ For the details please refer to the report.
 - The BLEU score calculator are modifed based on Hao Fang <hfang@uw.edu> and Tsung-Yi Lin <tl483@cornell.edu>'s work.
 - The models are trained on NYU's Prince cluster
 
+## Links
+[![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)
